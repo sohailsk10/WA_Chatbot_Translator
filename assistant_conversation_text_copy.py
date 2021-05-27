@@ -7,6 +7,10 @@ from gtts import gTTS
 from playsound import playsound
 import os
 
+from ibm_watson import AssistantV2
+from ibm_watson import LanguageTranslatorV3
+from ibm_cloud_sdk_core.authenticators import IAMAuthenticator
+
 
 from gtts import gTTS
 # consts
@@ -52,9 +56,11 @@ LT_PAIRS = {
     'tr': 'Turkish'
 }
 
-workspace_id = "473014ec-a7a6-4ef0-a994-6d89330dba41"
-assistant_api_key = "Dd0NrWCuy1222pjjGPJ97bPer-NytxAgxOZpXc1EV0xN"
-translator_api_key = "ut5yA-d4A73QZGth02NUwB7nyYwFDq8hupd8pZXrU1ET"
+workspace_id = "117d6a47-0c7a-4751-be87-4996ffb1aeeb"
+# assistant_api_key = "Dd0NrWCuy1222pjjGPJ97bPer-NytxAgxOZpXc1EV0xN"
+assistant_api_key = "Gkad4F_myreduRm6a0B_pImofiXS9lptw4B1lp2Z5gPn"
+# translator_api_key = "ut5yA-d4A73QZGth02NUwB7nyYwFDq8hupd8pZXrU1ET"
+translator_api_key = "pb9SUMxSl7OcpjXwJty8FxH_fxM51Kd7T7gU8nFtRdnH"
 
 r = sr.Recognizer()
 
@@ -76,10 +82,14 @@ def main():
 
     # set up conversation
     try:
-        assistant = AssistantV1(
-            iam_apikey=assistant_api_key,
-            version='2019-03-06'
+        # assistant = AssistantV1(iam_apikey=assistant_api_key, version='2019-03-06')
+        authenticator = IAMAuthenticator(assistant_api_key)
+        assistant = AssistantV2(
+            version='2020-04-01',
+            authenticator=authenticator
         )
+        assistant.set_service_url('https://api.eu-gb.assistant.watson.cloud.ibm.com/instances/76fa3d44-f247-4a0b-a826-ff47eb98a891')
+
     except:
         return {
             'message': 'Please bind your assistant service',
@@ -90,10 +100,15 @@ def main():
         }
 
     try:
+        # translator = LanguageTranslatorV3(version='2019-04-03', iam_apikey=translator_api_key)
+        # translator = LanguageTranslatorV3(iam_apikey = translator_api_key)
+        authenticator = IAMAuthenticator(translator_api_key)
         translator = LanguageTranslatorV3(
-            version='2019-04-03',
-            iam_apikey=translator_api_key
+            version='2018-05-01',
+            authenticator=authenticator
         )
+        print(translator)
+        translator.set_service_url('https://api.us-south.language-translator.watson.cloud.ibm.com/instances/5e8a8531-a1d8-493d-86db-a27a82d1ffbf')
     except:
         return {
             'message': 'Please bind your language translator service',
@@ -104,6 +119,12 @@ def main():
         }
 
     context = {}
+
+    Session_ID = assistant.create_session(
+        assistant_id='64e050a6-6669-412c-8fca-fd4698c4ddb0'
+    )
+    sess_id = Session_ID.get_result()['session_id']
+
     while True:
         # try:
         #     text = input("Input Text: ")
@@ -190,7 +211,7 @@ def main():
             continue
             # output = '{}'
             # intents = '{}'
-            language = language
+            # language = language
 
         # translate to base language if needed
         # try:
@@ -202,78 +223,74 @@ def main():
             )
             res = response.get_result()
             text = res['translations'][0]['translation']
+            print("TEXT", text)
 
         # supply language as entity
         text += ' (@language:{})'.format( language )
 
         # hit conversation
+        # response = assistant.message(
+        #     workspace_id=workspace,
+        #     input={'text': text},
+        #     context=context
+        # )
+
         response = assistant.message(
-            workspace_id=workspace,
+            assistant_id='64e050a6-6669-412c-8fca-fd4698c4ddb0',
+            session_id=sess_id,
             input={'text': text},
             context=context
+            # input={
+            #     'message_type': 'text',
+            #     'text': 'Hello'
+            # }
         )
 
-        res = response.get_result()
-        new_res = response.get_result()
-        new_context = res['context']
-        output = res['output']
-        output_text = [text for text in res['output']['text'] if text]
-        message = output_text[0]
-        output['text'] = output_text
-        intents = res['intents']
+        res = response
+        new_res = res.get_result()
+        def_context = new_res
+        print("NEW_RES", new_res)
+        new_context = new_res['output']['generic'][0]['text']
+        print("new_context", new_context)
+
+        output = new_context
+        print("OUTPUT", output)
+        # output_text = [text for text in new_context if text]
+        output_text = output
+        Output_TEXT = output_text
+
+
+        message = Output_TEXT
+        # print("MESSAGE", message)
+        # output['text'] = output_text
+        # # intents = res['intents']
         # print(intents)
 
         # translate back to original language if needed
         if language != BASE_LANGUAGE:
             response = translator.translate(
-                output_text,
+                Output_TEXT,
                 source=BASE_LANGUAGE,
                 target=language
             )
             res = response.get_result()
-            output_text = [t['translation'] for t in res['translations']]
-            message = output_text[0]
-            output['text'] = output_text
+            Output_TEXT = [t['translation'] for t in res['translations']]
+            print("Output_TEXT", Output_TEXT)
+            message = Output_TEXT
+            # output['text'] = Output_TEXT
         print("Reply: ", message)
-
+        message = "".join(message)
         tts = gTTS(text=message, lang=language)
-        # print(tts)
         tts.save("detect.mp3")
         playsound('detect.mp3')
         os.remove('detect.mp3')
         print("LANGUAGE DETECTED: ", language)
 
-        # if (lang == "en"):
-        #     tts = gTTS(text=message, lang='en')
-        #     print(TTS_ENG, tts)
-        #     tts.save("language.mp3")
-        #
-        # elif (lang == 'ar') :
-        #     tts = gTTS(text=message, lang='ar')
-        #     print(TTS_AR, tts)
-        #
-        #     tts.save("language.mp3")
-
-        context = new_res['context']
-        # print(context)
+        # print(type(new_context))
+        # print(new_context)
+        context = def_context
         # else:
         # message = message
-
-        # def converse(self):
-        #     msg = input(self.lastOutput + '\n')
-        #     # print("MSG", msg)
-        #     res = self.makeRequest(msg, self.lastContext)
-        #     print("res", res)
-        #     self.lastContext = res['context']
-        #     self.lastOutput = res['message']
-        # return {
-        #     'message': message,
-        #     'context': json.dumps( new_context ),
-        #     'output': json.dumps( output ),
-        #     'intents': json.dumps( intents ),
-        #     'language': language,
-        # }
-        # return context
 
 main()
 

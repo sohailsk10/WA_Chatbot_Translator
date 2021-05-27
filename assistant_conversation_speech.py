@@ -53,10 +53,21 @@ assistant_api_key = "Dd0NrWCuy1222pjjGPJ97bPer-NytxAgxOZpXc1EV0xN"
 translator_api_key = "ut5yA-d4A73QZGth02NUwB7nyYwFDq8hupd8pZXrU1ET"
 
 r = sr.Recognizer()
-lang = "es"
+
+select_language = input("Which Language Do you want speak: ENGLISH  ARABIC ")
+print(select_language)
+if select_language == "ENGLISH":
+    lang1 = "en"
+    print("English", lang1)
+
+elif select_language == "ARABIC":
+    lang1 = "ar"
+    print("ARABIC", lang1)
+
+lang = lang1
+
 
 def main():
-
     # get conversation workspace id
     try:
         workspace = workspace_id
@@ -101,43 +112,40 @@ def main():
     context = {}
     while True:
         try:
-            # use the microphone as source for input.
+
+
+            # select_language = input()
+            # tts = gTTS(text=select_language, lang='en-US')
+            # tts.save('select_lang.mp3')
+            # playsound('select_lang.mp3')
+            # os.remove('select_lang.mp3')
+
             with sr.Microphone() as source:
                 print('Say Something')
-                # audio = r.listen(source)
-                # print(audio)
-                r.adjust_for_ambient_noise(source, duration=0.05)
+                r.adjust_for_ambient_noise(source, duration=1)
                 print("Recording for 4 seconds")
                 recorded_audio = r.listen(source, timeout=4)
-                said = r.recognize_google(recorded_audio, language="hi-IN")
-                print(said)
+                print(recorded_audio)
+                # said = r.recognize_google(recorded_audio, language="hi-IN")
+                # print(said)
                 # break
                 # temp = r.recognize_google(audio)
                 # print("te mp", temp)
             #
-                # if (lang == 'en') :
-                #     said = r.recognize_google(audio, language='en-US')
-                #     print("Said_en", said)
-                # elif (lang == 'ar') :
-                #     said = r.recognize_google(audio, language="ar")
-                #     print("Said_es", said)
+                if (lang == lang1) :
+                    said = r.recognize_google(recorded_audio, language=lang)
+                    print("Said", said)
+                # elif (lang == 'hi') :
+                #     said = r.recognize_google(recorded_audio, language="hi-IN")
+                #     print("Said_ARABIC", said)
 
-                print("Start recordng")
-
-                #
                 # audio2 = r.listen(source)
                 # print('audio2', audio2)
 
-                # Using ggogle to recognize audio
-                # Mytext = r.recognize_google(audio)
-                # print("MyText", Mytext)
-                # text = input("type something: ")
 
                 # text = text.lower()
                 print("Did you say " + said)
                 text = said
-
-
 
         except sr.RequestError as e:
             print("Could not request results; {0}".format(e))
@@ -158,6 +166,7 @@ def main():
         # detect language
         if text:
             response = translator.identify(text)
+            print(response)
             res = response.get_result()
         else:
             res = None
